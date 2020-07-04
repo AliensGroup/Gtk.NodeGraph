@@ -21,11 +21,11 @@
 // License along with this library. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections;
 using System.Diagnostics;
 using Cairo;
 using Gdk;
 using GLib;
-using Gtk.NodeGraph.Utilities;
 
 namespace Gtk.NodeGraph
 {
@@ -33,18 +33,28 @@ namespace Gtk.NodeGraph
     /// Event arguments for <see cref="NodeSocket.SocketConnectEvent"/>, <see cref="NodeSocket.SocketDisconnectEvent"/>,
     /// and <see cref="NodeSocket.SocketKeyChangeEvent"/>.
     /// </summary>
-    public class SocketEventArgs : SignalArgs
+    public class SocketEventArgs : EventArgs
     {
-        public NodeSocket Source => Args[0] as NodeSocket;
+        public NodeSocket Socket { get; }
+
+        internal SocketEventArgs(NodeSocket socket)
+        {
+            Socket = socket;
+        }
     }
 
     /// <summary>
     /// Event arguments for <see cref="NodeSocket.SocketDataIncomingEvent"/> and
     /// <see cref="NodeSocket.SocketDataOutgoingEvent"/>.
     /// </summary>
-    public class SocketDataEventArgs : SignalArgs
+    public class SocketDataEventArgs : EventArgs
     {
-        public byte[] Data => Args[0] as byte[];
+        public byte[] Data { get; }
+
+        internal SocketDataEventArgs(byte[] data)
+        {
+            Data = data;
+        }
     }
 
     /// <summary>
@@ -160,6 +170,8 @@ namespace Gtk.NodeGraph
             new TargetEntry("gtk_nodesocket", TargetFlags.App, 0)
         };
 
+        private static readonly Hashtable SocketDragDataCache = new Hashtable();
+
         private Gdk.Window _eventWindow;
 
         private NodeSocketIO _io;
@@ -188,6 +200,12 @@ namespace Gtk.NodeGraph
         /// Socket compatibility key.
         /// </value>
         public uint RemoteKey => _input != null ? _input.Key : 0;
+
+        /// <summary>
+        /// Returns the input <see cref="NodeSocket"/> for this socket, or
+        /// <c>null</c> if no input is connected or the socket is not is sink mode.
+        /// </summary>
+        public NodeSocket Input => _input;
 
         /// <summary>
         /// The RGBA color of the socket.
@@ -321,61 +339,37 @@ namespace Gtk.NodeGraph
         /// Event raised each times this socket is got connected to another.
         /// </summary>
         [Signal(SocketConnectSignal)]
-        public event EventHandler<SocketEventArgs> SocketConnectEvent
-        {
-            add => AddSignalHandler(SocketConnectSignal, value, typeof(SocketEventArgs));
-            remove => RemoveSignalHandler(SocketConnectSignal, value);
-        }
+        public event EventHandler<SocketEventArgs> SocketConnectEvent;
 
         /// <summary>
         /// Event raised each times this socket got disconnected from another.
         /// </summary>
         [Signal(SocketDisconnectSignal)]
-        public event EventHandler<SocketEventArgs> SocketDisconnectEvent
-        {
-            add => AddSignalHandler(SocketDisconnectSignal, value, typeof(SocketEventArgs));
-            remove => RemoveSignalHandler(SocketDisconnectSignal, value);
-        }
+        public event EventHandler<SocketEventArgs> SocketDisconnectEvent;
 
         /// <summary>
         /// Event raised each times this socket changes his key.
         /// </summary>
         [Signal(SocketKeyChangeSignal)]
-        public event EventHandler<SocketEventArgs> SocketKeyChangeEvent
-        {
-            add => AddSignalHandler(SocketKeyChangeSignal, value, typeof(SocketEventArgs));
-            remove => RemoveSignalHandler(SocketKeyChangeSignal, value);
-        }
+        public event EventHandler<SocketEventArgs> SocketKeyChangeEvent;
 
         /// <summary>
         /// Event raised each times this socket receives data form another.
         /// </summary>
         [Signal(SocketDataIncomingSignal)]
-        public event EventHandler<SocketDataEventArgs> SocketDataIncomingEvent
-        {
-            add => AddSignalHandler(SocketDataIncomingSignal, value, typeof(SocketDataEventArgs));
-            remove => RemoveSignalHandler(SocketDataIncomingSignal, value);
-        }
+        public event EventHandler<SocketDataEventArgs> SocketDataIncomingEvent;
 
         /// <summary>
         /// Event raised each times this socket send data to another.
         /// </summary>
         [Signal(SocketDataOutgoingSignal)]
-        public event EventHandler<SocketDataEventArgs> SocketDataOutgoingEvent
-        {
-            add => AddSignalHandler(SocketDataOutgoingSignal, value, typeof(SocketDataEventArgs));
-            remove => RemoveSignalHandler(SocketDataOutgoingSignal, value);
-        }
+        public event EventHandler<SocketDataEventArgs> SocketDataOutgoingEvent;
 
         /// <summary>
         /// Event raised when this socket is destroyed.
         /// </summary>
         [Signal(SocketDestroyedSignal)]
-        public event EventHandler SocketDestroyedEvent
-        {
-            add => AddSignalHandler(SocketDestroyedSignal, value, typeof(EventArgs));
-            remove => RemoveSignalHandler(SocketDestroyedSignal, value);
-        }
+        public event EventHandler SocketDestroyedEvent;
 
         #endregion
 
@@ -412,42 +406,12 @@ namespace Gtk.NodeGraph
         public NodeSocket(NodeSocketIO io)
             : this()
         {
-            _io = io;
+            IO = io;
         }
 
         #endregion
 
         #region Methods
-
-        private void OnSocketKeyChanged(NodeSocket source)
-        {
-            Signal.Emit(this, SocketKeyChangeSignal, source);
-        }
-
-        private void OnSocketConnected(NodeSocket source)
-        {
-            Signal.Emit(this, SocketConnectSignal, source);
-        }
-
-        private void OnSocketDataIncoming(byte[] payload)
-        {
-            Signal.Emit(this, SocketDataIncomingSignal, payload);
-        }
-
-        private void OnSocketDataOutgoing(byte[] payload)
-        {
-            Signal.Emit(this, SocketDataOutgoingSignal, payload);
-        }
-
-        private void OnSocketDisconnected(NodeSocket source)
-        {
-            Signal.Emit(this, SocketDisconnectSignal, source);
-        }
-
-        private void OnSocketDestroyed()
-        {
-            Signal.Emit(this, SocketDestroyedSignal);
-        }
 
         private void DataIncomingSignalHandler(object sender, SocketDataEventArgs args)
         {
@@ -561,6 +525,40 @@ namespace Gtk.NodeGraph
             source.OnSocketConnected(source);
         }
 
+        protected virtual void OnSocketKeyChanged(NodeSocket source)
+        {
+            SocketKeyChangeEvent?.Invoke(this, new SocketEventArgs(source));
+        }
+
+        protected virtual void OnSocketConnected(NodeSocket source)
+        {
+            SocketConnectEvent?.Invoke(this, new SocketEventArgs(source));
+        }
+
+        protected virtual void OnSocketDataIncoming(byte[] payload)
+        {
+            SocketDataIncomingEvent?.Invoke(this, new SocketDataEventArgs(payload));
+        }
+
+        protected virtual void OnSocketDataOutgoing(byte[] payload)
+        {
+            SocketDataOutgoingEvent?.Invoke(this, new SocketDataEventArgs(payload));
+        }
+
+        protected virtual void OnSocketDisconnected(NodeSocket source)
+        {
+            SocketDisconnectEvent?.Invoke(this, new SocketEventArgs(source));
+        }
+
+        protected virtual void OnSocketDestroyed()
+        {
+            SocketDestroyedEvent?.Invoke(this, EventArgs.Empty);
+        }
+
+        #endregion
+
+        #region Widget Implementation
+
         protected override void OnDragBegin(DragContext context)
         {
             // We apparently have to set it...
@@ -583,17 +581,23 @@ namespace Gtk.NodeGraph
 
         protected override void OnDragDataReceived(DragContext context, int x, int y, SelectionData selection_data, uint info, uint time)
         {
-            // We want the source socket so we want to connect to our input
-            NodeSocket source = ByteArray.ByteArrayToObject<NodeSocket>(selection_data.Data);
-            if (source == null)
+            string key = System.Text.Encoding.ASCII.GetString(selection_data.Data);
+            if (!SocketDragDataCache.ContainsKey(key))
                 return;
 
+            // We want the source socket so we want to connect to our input
+            if (!(SocketDragDataCache[key] is NodeSocket source))
+                return;
+
+            SocketDragDataCache.Remove(key);
             ConnectSocketsInternal(source);
         }
 
         protected override void OnDragDataGet(DragContext context, SelectionData selection_data, uint info, uint time)
         {
-            byte[] data = ByteArray.ObjectToByteArray(this);
+            string key = Guid.NewGuid().ToString();
+            SocketDragDataCache.Add(key, this);
+            byte[] data = System.Text.Encoding.ASCII.GetBytes(key);
             selection_data.Set(selection_data.Target, 32, data, data.Length);
         }
 
