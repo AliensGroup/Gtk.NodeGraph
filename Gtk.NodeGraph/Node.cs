@@ -24,29 +24,57 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
+using System.Xml;
 using Gdk;
 using GLib;
 
 namespace Gtk.NodeGraph
 {
     /// <summary>
+    /// Event arguments for <see cref="Node.NodeSocketDragBeginEvent"/> and
+    /// <see cref="Node.NodeSocketDragEndEvent"/>.
+    /// </summary>
+    public class NodeSocketDragEventArgs : EventArgs
+    {
+        public int X { get; }
+
+        public int Y { get; }
+
+        internal NodeSocketDragEventArgs(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+    }
+
+    /// <summary>
     /// Event arguments for <see cref="Node.NodeSocketConnectEvent"/> and
     /// <see cref="Node.NodeSocketDisconnectEvent"/>.
     /// </summary>
-    public class NodeSocketConnectionEventArgs : SignalArgs
+    public class NodeSocketConnectionEventArgs : EventArgs
     {
-        public NodeSocket Sink => Args[0] as NodeSocket;
+        public NodeSocket Sink { get; }
 
-        public NodeSocket Source => Args[1] as NodeSocket;
+        public NodeSocket Source { get; }
+
+        internal NodeSocketConnectionEventArgs(NodeSocket sink, NodeSocket source)
+        {
+            Sink = sink;
+            Source = source;
+        }
     }
 
     /// <summary>
     /// Event arguments for <see cref="Node.NodeSocketDestroyedEvent"/>.
     /// </summary>
-    public class NodeSocketDestroyedEventArgs : SignalArgs
+    public class NodeSocketDestroyedEventArgs : EventArgs
     {
-        public NodeSocket Socket => Args[0] as NodeSocket;
+        public NodeSocket Socket { get; }
+
+        internal NodeSocketDestroyedEventArgs(NodeSocket socket)
+        {
+            Socket = socket;
+        }
     }
 
     /// <summary>
@@ -99,6 +127,16 @@ namespace Gtk.NodeGraph
         /// Signal emitted when this node is clicked.
         /// </summary>
         public const string NodeFunctionClickedSignal = "node-func-clicked";
+
+        /// <summary>
+        /// Signal emitted when a socket on this node begins a drag operation.
+        /// </summary>
+        public const string NodeSocketDragBeginSignal = "node-drag-begin";
+
+        /// <summary>
+        /// Signal emitted when a socket on this node ends a drag operation
+        /// </summary>
+        public const string NodeSocketDragEndSignal = "node-drag-end";
 
         /// <summary>
         /// Signal emitted when a socket on this node is connected to another node.
@@ -346,44 +384,40 @@ namespace Gtk.NodeGraph
         #region Events
 
         /// <summary>
+        /// Event raised each times a socket on this node starts a drag operation.
+        /// </summary>
+        [Signal(NodeSocketDragBeginSignal)]
+        public event EventHandler<NodeSocketDragEventArgs> NodeSocketDragBeginEvent;
+
+        /// <summary>
+        /// Event raised each times a socket on this node ends a drag operation.
+        /// </summary>
+        [Signal(NodeSocketDragBeginSignal)]
+        public event EventHandler NodeSocketDragEndEvent;
+
+        /// <summary>
         /// Event raised each times a socket on this node is got connected to another.
         /// </summary>
         [Signal(NodeSocketConnectSignal)]
-        public event EventHandler<NodeSocketConnectionEventArgs> NodeSocketConnectEvent
-        {
-            add => AddSignalHandler(NodeSocketConnectSignal, value, typeof(NodeSocketConnectionEventArgs));
-            remove => RemoveSignalHandler(NodeSocketConnectSignal, value);
-        }
+        public event EventHandler<NodeSocketConnectionEventArgs> NodeSocketConnectEvent;
 
         /// <summary>
         /// Event raised each times a socket on this node is got disconnected from another.
         /// </summary>
         [Signal(NodeSocketDisconnectSignal)]
-        public event EventHandler<NodeSocketConnectionEventArgs> NodeSocketDisconnectEvent
-        {
-            add => AddSignalHandler(NodeSocketDisconnectSignal, value, typeof(NodeSocketConnectionEventArgs));
-            remove => RemoveSignalHandler(NodeSocketDisconnectSignal, value);
-        }
+        public event EventHandler<NodeSocketConnectionEventArgs> NodeSocketDisconnectEvent;
 
         /// <summary>
         /// Event raised each times a socket on this node is destroyed.
         /// </summary>
         [Signal(NodeSocketDestroyedSignal)]
-        public event EventHandler<NodeSocketDestroyedEventArgs> NodeSocketDestroyedEvent
-        {
-            add => AddSignalHandler(NodeSocketDestroyedSignal, value, typeof(NodeSocketDestroyedEventArgs));
-            remove => RemoveSignalHandler(NodeSocketDisconnectSignal, value);
-        }
+        public event EventHandler<NodeSocketDestroyedEventArgs> NodeSocketDestroyedEvent;
 
         /// <summary>
         /// Event raised each times a socket this node is clicked.
         /// </summary>
         [Signal(NodeFunctionClickedSignal)]
-        public event EventHandler NodeFunctionClickedEvent
-        {
-            add => AddSignalHandler(NodeFunctionClickedSignal, value, typeof(EventArgs));
-            remove => RemoveSignalHandler(NodeFunctionClickedSignal, value);
-        }
+        public event EventHandler NodeFunctionClickedEvent;
 
         #endregion
 
@@ -465,50 +499,33 @@ namespace Gtk.NodeGraph
             HasWindow = false;
         }
 
-        private void OnNodeSocketConnect(NodeSocket sink, NodeSocket source)
-        {
-            Signal.Emit(this, NodeSocketConnectSignal, sink, source);
-        }
-
-        private void OnNodeSocketDisconnect(NodeSocket sink, NodeSocket source)
-        {
-            Signal.Emit(this, NodeSocketDisconnectSignal, sink, source);
-        }
-
-        private void OnNodeSocketDestroyed(NodeSocket socket)
-        {
-            Signal.Emit(this, NodeSocketDestroyedSignal, socket);
-        }
-
-        private void OnNodeFunctionClicked()
-        {
-            Signal.Emit(this, NodeFunctionClickedSignal);
-        }
-
         private void SocketDragBeginHandler(object sender, DragBeginArgs args)
         {
             Rectangle allocSocket = ((NodeSocket) sender).Allocation;
             Rectangle allocNode = Allocation;
 
-            args.Context.Data.Add(XProperty, allocNode.X + allocSocket.X + allocSocket.Width / 2);
-            args.Context.Data.Add(YProperty, allocNode.Y + allocSocket.Y + allocSocket.Height / 2);
+            OnNodeSocketBeginDragged
+            (
+                allocNode.X + allocSocket.X + allocSocket.Width / 2,
+                allocNode.Y + allocSocket.Y + allocSocket.Height / 2
+            );
 
-            OnDragBegin(args.Context);
+            args.RetVal = false;
         }
 
         private void SocketDragEndHandler(object sender, DragEndArgs args)
         {
-            OnDragEnd(args.Context);
+            OnNodeSocketEndDragged();
         }
 
         private void SocketConnectHandler(object sender, SocketEventArgs args)
         {
-            OnNodeSocketConnect((NodeSocket) sender, args.Source);
+            OnNodeSocketConnect((NodeSocket) sender, args.Socket);
         }
 
         private void SocketDisconnectHandler(object sender, SocketEventArgs args)
         {
-            OnNodeSocketDisconnect((NodeSocket) sender, args.Source);
+            OnNodeSocketDisconnect((NodeSocket) sender, args.Socket);
         }
 
         private void SocketDestroyedHandler(object sender, EventArgs args)
@@ -539,7 +556,7 @@ namespace Gtk.NodeGraph
             Parent.QueueDraw();
         }
 
-        private Widget ItemAddReal(Widget child, NodeSocketIO io)
+        private NodeSocket ItemAddReal(Widget child, NodeSocketIO io)
         {
             if (child.Parent != null)
                 return null;
@@ -818,6 +835,36 @@ namespace Gtk.NodeGraph
             return null;
         }
 
+        protected virtual void OnNodeSocketBeginDragged(int x, int y)
+        {
+            NodeSocketDragBeginEvent?.Invoke(this, new NodeSocketDragEventArgs(x, y));
+        }
+
+        protected virtual void OnNodeSocketEndDragged()
+        {
+            NodeSocketDragEndEvent?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected virtual void OnNodeSocketConnect(NodeSocket sink, NodeSocket source)
+        {
+            NodeSocketConnectEvent?.Invoke(this, new NodeSocketConnectionEventArgs(sink, source));
+        }
+
+        protected virtual void OnNodeSocketDisconnect(NodeSocket sink, NodeSocket source)
+        {
+            NodeSocketDisconnectEvent?.Invoke(this, new NodeSocketConnectionEventArgs(sink, source));
+        }
+
+        protected virtual void OnNodeSocketDestroyed(NodeSocket socket)
+        {
+            NodeSocketDestroyedEvent?.Invoke(this, new NodeSocketDestroyedEventArgs(socket));
+        }
+
+        protected virtual void OnNodeFunctionClicked()
+        {
+            NodeFunctionClickedEvent?.Invoke(this, EventArgs.Empty);
+        }
+
         /// <summary>
         /// The expander is very very nasty in that it responds to an isolated
         /// "release" event, which I'm apparently unable to block.
@@ -868,7 +915,7 @@ namespace Gtk.NodeGraph
         /// <returns>
         /// An XML string describing the internal configuration; may be <c>null</c>.
         /// </returns>
-        public virtual StringBuilder ExportProperties()
+        public virtual XmlNode ExportProperties()
         {
             return null;
         }
@@ -881,7 +928,7 @@ namespace Gtk.NodeGraph
         /// <returns>
         /// The genrated socket widget for the added item.
         /// </returns>
-        public Widget ItemAdd(Widget widget, NodeSocketIO mode)
+        public NodeSocket ItemAdd(Widget widget, NodeSocketIO mode)
         {
             return ItemAddReal(widget, mode);
         }
@@ -1066,6 +1113,9 @@ namespace Gtk.NodeGraph
 
         protected override bool OnButtonReleaseEvent(EventButton evnt)
         {
+            if (!_rectangleFunc.Contains((int) evnt.X, (int) evnt.Y))
+                return false;
+
             if (_activateId != 0)
                 OnNodeFunctionClicked();
 
