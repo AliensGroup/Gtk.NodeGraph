@@ -55,7 +55,7 @@ namespace Gtk.NodeGraph
     /// <para>
     /// Custom <see cref="Node"/> widgets can save and restore their internal child
     /// widgets states and other properties and special tags by implementing
-    /// the proper Buildable interfaces.!-- To export the configuration,
+    /// the proper Buildable interfaces. To export the configuration,
     /// <see cref="ExportProperties"/> must be implemented and is expected to return
     /// valid XML output which is integrated into the XML output produces
     /// by <see cref="NodeView"/>.
@@ -202,7 +202,7 @@ namespace Gtk.NodeGraph
             {
                 _socketRadius = value;
 
-                // XXX we take teh socket radius as the required (minimum) margin,
+                // XXX we take the socket radius as the required (minimum) margin,
                 // update it here for now
                 _margin.Top = (short) value;
                 _margin.Bottom = (short) value;
@@ -345,7 +345,7 @@ namespace Gtk.NodeGraph
         /// <summary>
         /// Event raised each times a socket on this node ends a drag operation.
         /// </summary>
-        [Signal(NodeSocketDragBeginSignal)]
+        [Signal(NodeSocketDragEndSignal)]
         public event EventHandler NodeSocketDragEndEvent;
 
         /// <summary>
@@ -879,7 +879,7 @@ namespace Gtk.NodeGraph
         /// <param name="widget">The item widget to add.</param>
         /// <param name="mode">The mode of the generated socket for this item.</param>
         /// <returns>
-        /// The genrated socket widget for the added item.
+        /// The generated socket widget for the added item.
         /// </returns>
         public NodeSocket ItemAdd(Widget widget, NodeSocketIO mode)
         {

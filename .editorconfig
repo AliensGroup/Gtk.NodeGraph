@@ -1,0 +1,5 @@
+﻿root = false
+
+[*.{cs,vb}]
+file_header_template = unset
+

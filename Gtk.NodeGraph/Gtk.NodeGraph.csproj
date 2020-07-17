@@ -5,13 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AtkSharp" Version="3.22.25.98" />
-    <PackageReference Include="CairoSharp" Version="3.22.25.98" />
-    <PackageReference Include="GdkSharp" Version="3.22.25.98" />
-    <PackageReference Include="GioSharp" Version="3.22.25.98" />
-    <PackageReference Include="GLibSharp" Version="3.22.25.98" />
     <PackageReference Include="GtkSharp" Version="3.22.25.98" />
-    <PackageReference Include="PangoSharp" Version="3.22.25.98" />
   </ItemGroup>
 
 </Project>
