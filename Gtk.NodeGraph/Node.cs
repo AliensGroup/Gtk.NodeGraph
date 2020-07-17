@@ -31,53 +31,6 @@ using GLib;
 namespace Gtk.NodeGraph
 {
     /// <summary>
-    /// Event arguments for <see cref="Node.NodeSocketDragBeginEvent"/> and
-    /// <see cref="Node.NodeSocketDragEndEvent"/>.
-    /// </summary>
-    public class NodeSocketDragEventArgs : EventArgs
-    {
-        public int X { get; }
-
-        public int Y { get; }
-
-        internal NodeSocketDragEventArgs(int x, int y)
-        {
-            X = x;
-            Y = y;
-        }
-    }
-
-    /// <summary>
-    /// Event arguments for <see cref="Node.NodeSocketConnectEvent"/> and
-    /// <see cref="Node.NodeSocketDisconnectEvent"/>.
-    /// </summary>
-    public class NodeSocketConnectionEventArgs : EventArgs
-    {
-        public NodeSocket Sink { get; }
-
-        public NodeSocket Source { get; }
-
-        internal NodeSocketConnectionEventArgs(NodeSocket sink, NodeSocket source)
-        {
-            Sink = sink;
-            Source = source;
-        }
-    }
-
-    /// <summary>
-    /// Event arguments for <see cref="Node.NodeSocketDestroyedEvent"/>.
-    /// </summary>
-    public class NodeSocketDestroyedEventArgs : EventArgs
-    {
-        public NodeSocket Socket { get; }
-
-        internal NodeSocketDestroyedEventArgs(NodeSocket socket)
-        {
-            Socket = socket;
-        }
-    }
-
-    /// <summary>
     /// <para>
     /// The <see cref="Node"/> widget is a widget container derived from <see cerf="Box"/>.
     /// Widgets added to the node are assigned a <see cref="NodeSocket"/>. The user must
