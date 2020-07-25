@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -384,7 +384,7 @@ namespace Gtk.NodeGraph
             window.Cursor = cursor;
         }
 
-        private void ConnectionMapper(Builder builder, GLib.Object o, string signalName, string handlerName, GLib.Object connectObject, ConnectFlags flags)
+        private void ConnectionMapper(Node o, string handlerName, Node connectObject)
         {
             string[] parts = handlerName.Split(new[] { '_' }, 2);
             uint idSource = uint.Parse(parts[0]);
@@ -393,7 +393,7 @@ namespace Gtk.NodeGraph
             NodeSocket source = null;
             NodeSocket sink = null;
 
-            IReadOnlyList<NodeSocket> sockets = ((Node) connectObject).Sources;
+            IReadOnlyList<NodeSocket> sockets = connectObject.Sources;
             foreach (NodeSocket socket in sockets)
             {
                 if (socket.Id != idSource)
@@ -403,7 +403,7 @@ namespace Gtk.NodeGraph
                 break;
             }
 
-            sockets = ((Node) o).Sinks;
+            sockets = o.Sinks;
             foreach (NodeSocket socket in sockets)
             {
                 if (socket.Id != idSink)
@@ -447,7 +447,7 @@ namespace Gtk.NodeGraph
             if (string.IsNullOrEmpty(filename))
                 throw new ArgumentNullException(nameof(filename), "No filename specified");
 
-            using FileStream f = File.OpenWrite(filename);
+            using FileStream f = File.Open(filename, FileMode.Create);
 
             StringBuilder s = new StringBuilder();
             XmlWriterSettings settings = new XmlWriterSettings
@@ -516,16 +516,15 @@ namespace Gtk.NodeGraph
                     // We'll save the socket ids in the name of the handler and
                     // reconstruct them in ConnectionMapper()
                     // this way we can (ab)use Builder to do most of the work for us
-                    WriteSignalElement(Node.NodeSocketConnectSignal, $"{input.Id}_{socket.Id}", node.Id.ToString());
+                    WriteSignalElement(Node.NodeSocketConnectSignal, $"{input.Id}_{socket.Id}", ((Node) input.GetAncestor(Node.GType)).Id.ToString());
                 }
 
-                XmlNode internalCfg = node.ExportProperties();
+                XmlNode[] internalCfg = node.ExportProperties();
 
                 if (internalCfg != null)
                 {
-                    XmlDocument xmlDoc = new XmlDocument();
-                    xmlDoc.AppendChild(internalCfg);
-                    xmlDoc.WriteContentTo(xmlWriter);
+                    foreach (XmlNode cfg in internalCfg)
+                        cfg.WriteTo(xmlWriter);
                 }
 
                 xmlWriter.WriteEndElement();
@@ -576,6 +575,8 @@ namespace Gtk.NodeGraph
 
             using FileStream f = File.OpenRead(filename);
 
+            Clear();
+
             XmlReaderSettings settings = new XmlReaderSettings
             {
                 CloseInput = true,
@@ -587,6 +588,9 @@ namespace Gtk.NodeGraph
 
             reader.ReadStartElement("interface");
 
+            List<(string, uint, uint)> connections = new List<(string, uint, uint)>();
+            Dictionary<uint, Node> nodes = new Dictionary<uint, Node>();
+
             while (reader.Name == "object")
             {
                 if (reader.GetAttribute("class") != nameof(Node))
@@ -595,6 +599,7 @@ namespace Gtk.NodeGraph
                 Node node = new Node();
 
                 reader.ReadStartElement("object");
+
                 while (reader.Name == "property")
                 {
                     XElement p = XNode.ReadFrom(reader) as XElement;
@@ -612,12 +617,35 @@ namespace Gtk.NodeGraph
 
                     node.SetProperty(propertyName, new Value(v));
                 }
+
+                while (reader.Name == "signal")
+                {
+                    XElement s = XNode.ReadFrom(reader) as XElement;
+                    string handler = s.Attribute(XName.Get("handler")).Value;
+                    uint connectedObject = uint.Parse(s.Attribute(XName.Get("object")).Value);
+
+                    connections.Add((handler, node.Id, connectedObject));
+                }
+
+                while (reader.Name == "child")
+                {
+                    XElement c = XNode.ReadFrom(reader) as XElement;
+                    Builder b = new Builder();
+                    b.AddFromString("<interface>" + c.FirstNode.ToString() + "</interface>");
+
+                    // TODO: Proper way to rebuild node children
+                }
+
                 reader.ReadEndElement();
 
                 Add(node);
+                nodes.Add(node.Id, node);
             }
 
             reader.ReadEndElement();
+
+            foreach ((string handler, Node current, Node other) in connections.Select(t => (t.Item1, nodes[t.Item2], nodes[t.Item3])))
+                ConnectionMapper(current, handler, other);
         }
 
         #endregion
