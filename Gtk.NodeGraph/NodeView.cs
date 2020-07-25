@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -29,6 +29,7 @@ using System.Linq;
 using System.IO;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace Gtk.NodeGraph
 {
@@ -430,94 +431,94 @@ namespace Gtk.NodeGraph
             if (string.IsNullOrEmpty(filename))
                 throw new ArgumentNullException(nameof(filename), "No filename specified");
 
-            using (FileStream f = File.OpenWrite(filename))
+            using FileStream f = File.OpenWrite(filename);
+
+            StringBuilder s = new StringBuilder();
+            XmlWriterSettings settings = new XmlWriterSettings
             {
-                StringBuilder s = new StringBuilder();
-                XmlWriterSettings settings = new XmlWriterSettings
+                Encoding = Encoding.UTF8,
+                Indent = true,
+                OmitXmlDeclaration = false,
+            };
+
+            using XmlWriter xmlWriter = XmlWriter.Create(f, settings);
+
+            void WritePropertyElement(string name, string value)
+            {
+                xmlWriter.WriteStartElement("property");
+                xmlWriter.WriteAttributeString("name", name);
+                xmlWriter.WriteString(value);
+                xmlWriter.WriteEndElement();
+            }
+
+            void WriteSignalElement(string name, string handler, string o)
+            {
+                xmlWriter.WriteStartElement("signal");
+                xmlWriter.WriteAttributeString("name", name);
+                xmlWriter.WriteAttributeString("handler", handler);
+                xmlWriter.WriteAttributeString("object", o);
+                xmlWriter.WriteEndElement();
+            }
+
+            // Lead in
+            xmlWriter.WriteStartDocument();
+            xmlWriter.WriteStartElement("interface");
+
+            // Fixup the IDs so we can properly load, add and save again
+            // XXX I really need to think of a better method for unique IDs
+            _nodeId = 0;
+            foreach (NodeViewChild child in _children)
+            {
+                if (!(child.Child is Node node))
+                    continue;
+
+                node.Id = _nodeId++;
+            }
+
+            foreach (NodeViewChild child in _children)
+            {
+                if (!(child.Child is Node node))
+                    continue;
+
+                xmlWriter.WriteStartElement("object");
+                xmlWriter.WriteAttributeString("class", nameof(Node));
+                xmlWriter.WriteAttributeString("id", node.Id.ToString());
+
+                WritePropertyElement(Node.LabelProperty, node.Label);
+                WritePropertyElement(Node.XProperty, node.X.ToString());
+                WritePropertyElement(Node.YProperty, node.Y.ToString());
+                WritePropertyElement(Node.WidthProperty, node.Width.ToString());
+                WritePropertyElement(Node.HeightProperty, node.Height.ToString());
+                WritePropertyElement(Node.IdProperty, node.Id.ToString());
+
+                foreach (NodeSocket socket in node.Sinks)
                 {
-                    Encoding = Encoding.UTF8,
-                    Indent = true,
-                    OmitXmlDeclaration = false,
-                };
-
-                XmlWriter xmlWriter = XmlWriter.Create(f, settings);
-
-                void WritePropertyElement(string name, string value)
-                {
-                    xmlWriter.WriteStartElement("property");
-                    xmlWriter.WriteAttributeString("name", name);
-                    xmlWriter.WriteString(value);
-                    xmlWriter.WriteEndElement();
-                }
-
-                void WriteSignalElement(string name, string handler, string o)
-                {
-                    xmlWriter.WriteStartElement("signal");
-                    xmlWriter.WriteAttributeString("name", name);
-                    xmlWriter.WriteAttributeString("handler", handler);
-                    xmlWriter.WriteAttributeString("object", o);
-                    xmlWriter.WriteEndElement();
-                }
-
-                // Lead in
-                xmlWriter.WriteStartDocument();
-                xmlWriter.WriteStartElement("interface");
-
-                // Fixup the IDs so we can properly load, add and save again
-                // XXX I really need to think of a better method for unique IDs
-                _nodeId = 0;
-                foreach (NodeViewChild child in _children)
-                {
-                    if (!(child.Child is Node node))
+                    NodeSocket input = socket.Input;
+                    if (input == null)
                         continue;
 
-                    node.Id = _nodeId++;
+                    // We'll save the socket ids in the name of the handler and
+                    // reconstruct them in ConnectionMapper()
+                    // this way we can (ab)use Builder to do most of the work for us
+                    WriteSignalElement(Node.NodeSocketConnectSignal, $"{input.Id}_{socket.Id}", node.Id.ToString());
                 }
 
-                foreach (NodeViewChild child in _children)
+                XmlNode internalCfg = node.ExportProperties();
+
+                if (internalCfg != null)
                 {
-                    if (!(child.Child is Node node))
-                        continue;
-
-                    xmlWriter.WriteStartElement("object");
-                    xmlWriter.WriteAttributeString("class", typeof(Node).Name);
-                    xmlWriter.WriteAttributeString("id", node.Id.ToString());
-
-                    WritePropertyElement(Node.XProperty, node.X.ToString());
-                    WritePropertyElement(Node.YProperty, node.Y.ToString());
-                    WritePropertyElement(Node.WidthProperty, node.Width.ToString());
-                    WritePropertyElement(Node.HeightProperty, node.Height.ToString());
-                    WritePropertyElement(Node.IdProperty, node.Id.ToString());
-
-                    foreach (NodeSocket socket in node.Sinks)
-                    {
-                        NodeSocket input = socket.Input;
-                        if (input == null)
-                            continue;
-
-                        // We'll save the socket ids in the name of the handler and
-                        // reconstruct them in ConnectionMapper()
-                        // this way we can (ab)use Builder to do most of the work for us
-                        WriteSignalElement(Node.NodeSocketConnectSignal, $"{input.Id}_{socket.Id}", node.Id.ToString());
-                    }
-
-                    XmlNode internalCfg = node.ExportProperties();
-
-                    if (internalCfg != null)
-                    {
-                        XmlDocument xmlDoc = new XmlDocument();
-                        xmlDoc.AppendChild(internalCfg);
-                        xmlDoc.WriteContentTo(xmlWriter);
-                    }
-
-                    xmlWriter.WriteEndElement();
+                    XmlDocument xmlDoc = new XmlDocument();
+                    xmlDoc.AppendChild(internalCfg);
+                    xmlDoc.WriteContentTo(xmlWriter);
                 }
 
                 xmlWriter.WriteEndElement();
-                xmlWriter.WriteEndDocument();
-
-                xmlWriter.Close();
             }
+
+            xmlWriter.WriteEndElement();
+            xmlWriter.WriteEndDocument();
+
+            xmlWriter.Close();
         }
 
         /// <summary>
@@ -557,17 +558,50 @@ namespace Gtk.NodeGraph
             if (string.IsNullOrEmpty(filename))
                 throw new ArgumentNullException(nameof(filename), "No filename specified");
 
-            using (FileStream f = File.OpenRead(filename))
+            using FileStream f = File.OpenRead(filename);
+
+            XmlReaderSettings settings = new XmlReaderSettings
             {
-                Builder builder = new Builder(f);
+                CloseInput = true,
+                IgnoreComments = true,
+                IgnoreWhitespace = true,
+            };
 
-                foreach (GLib.Object n in builder.Objects)
-                    Add((Widget) n);
+            using XmlReader reader = XmlReader.Create(f, settings);
 
-                ShowAll();
+            reader.ReadStartElement("interface");
 
-                builder.Dispose();
+            while (reader.Name == "object")
+            {
+                if (reader.GetAttribute("class") != nameof(Node))
+                    continue;
+
+                Node node = new Node();
+
+                reader.ReadStartElement("object");
+                while (reader.Name == "property")
+                {
+                    XElement p = XNode.ReadFrom(reader) as XElement;
+                    string propertyName = p.FirstAttribute.Value;
+                    object v = propertyName switch
+                    {
+                        Node.LabelProperty => p.Value,
+                        Node.XProperty => uint.Parse(p.Value),
+                        Node.YProperty => uint.Parse(p.Value),
+                        Node.WidthProperty => uint.Parse(p.Value),
+                        Node.HeightProperty => uint.Parse(p.Value),
+                        Node.IdProperty => uint.Parse(p.Value),
+                        _ => string.Empty
+                    };
+
+                    node.SetProperty(propertyName, new Value(v));
+                }
+                reader.ReadEndElement();
+
+                Add(node);
             }
+
+            reader.ReadEndElement();
         }
 
         #endregion
