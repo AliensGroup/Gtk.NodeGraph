@@ -1,4 +1,4 @@
-﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -417,6 +417,22 @@ namespace Gtk.NodeGraph
                 return;
 
             NodeSocket.ConnectSockets(sink, source);
+        }
+
+        /// <summary>
+        /// Clears all <see cref="Node"/>s in this <see cref="NodeView"/>.
+        /// </summary>
+        public void Clear()
+        {
+            Widget[] children = Children;
+
+            while (children.Length > 0)
+            {
+                Remove(children[0]);
+                children = Children;
+            }
+
+            _nodeId = 0;
         }
 
         /// <summary>
