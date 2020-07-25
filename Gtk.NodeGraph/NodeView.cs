@@ -33,32 +33,6 @@ using System.Xml;
 namespace Gtk.NodeGraph
 {
     /// <summary>
-    /// List of cursor states possible in the <see cref="NodeView"/>.
-    /// </summary>
-    public enum NodeViewAction
-    {
-        /// <summary>
-        /// The cursor is not in a special state.
-        /// </summary>
-        None,
-
-        /// <summary>
-        /// The cursor is dragging a node.
-        /// </summary>
-        DragChild,
-
-        /// <summary>
-        /// The cursor is dragging a socket to connect/disconnect nodes.
-        /// </summary>
-        DragConnection,
-
-        /// <summary>
-        /// The cursor is resizing a node.
-        /// </summary>
-        Resize,
-    }
-
-    /// <summary>
     /// The <see cref="NodeView"/> widget is a viewer and connection manager
     /// for <see cref="Node"/> widgets.
     /// </summary>
