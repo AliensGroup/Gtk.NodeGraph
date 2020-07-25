@@ -874,7 +874,7 @@ namespace Gtk.NodeGraph
         /// <returns>
         /// An XML string describing the internal configuration; may be <c>null</c>.
         /// </returns>
-        public virtual XmlNode ExportProperties()
+        public virtual XmlNode[] ExportProperties()
         {
             return null;
         }
