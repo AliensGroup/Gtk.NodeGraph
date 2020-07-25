@@ -131,6 +131,11 @@ namespace Gtk.NodeGraph
         /// </summary>
         public const string IdProperty = "id";
 
+        /// <summary>
+        /// Property storing the label of this node.
+        /// </summary>
+        public const string LabelProperty = "label";
+
         #endregion
 
         #region Constants
@@ -176,18 +181,6 @@ namespace Gtk.NodeGraph
         #endregion
 
         #region Properties
-
-        /// <summary>
-        /// Gets or sets the node label.
-        /// </summary>
-        /// <value>
-        /// The label text.
-        /// </value>
-        public string Label
-        {
-            get => _expander.Label;
-            set => _expander.Label = value;
-        }
 
         /// <summary>
         /// Gets or sets the radius of each socket in this node.
@@ -250,6 +243,19 @@ namespace Gtk.NodeGraph
             .Where(c => c.Socket?.IO == NodeSocketIO.Source)
             .Select(c => c.Socket)
             .ToList();
+
+        /// <summary>
+        /// Gets or sets the node label.
+        /// </summary>
+        /// <value>
+        /// The label text.
+        /// </value>
+        [Property(LabelProperty, "node label", "the label of this node")]
+        public string Label
+        {
+            get => _expander.Label;
+            set => _expander.Label = value;
+        }
 
         /// <summary>
         /// The X position of the node.
