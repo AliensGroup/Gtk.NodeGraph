@@ -887,21 +887,21 @@ namespace Gtk.NodeGraph
 
                 child.Child.GetPreferredSize(out Requisition requisition, out _);
 
-                Rectangle allocationChild = new Rectangle
-                (
-                    child.X,
-                    child.Y,
-                    Math.Max(requisition.Width, child.Width),
-                    Math.Max(requisition.Height, child.Height)
-                );
-
-                child.Child.SizeAllocate(allocationChild);
-                allocationChild = child.Child.Allocation;
-
                 if (child.Child is Node node)
                     socketRadius = (int) node.SocketRadius;
                 else
                     socketRadius = 0;
+
+                Rectangle allocationChild = new Rectangle
+                (
+                    child.X,
+                    child.Y,
+                    Math.Max(requisition.Width + child.PaddingLeft + child.PaddingRight + socketRadius * 2, child.Width),
+                    Math.Max(requisition.Height + child.PaddingTop + child.PaddingBottom + socketRadius * 2, child.Height)
+                );
+
+                child.Child.SizeAllocate(allocationChild);
+                allocationChild = child.Child.Allocation;
 
                 child.SouthEast.X = allocationChild.Width - socketRadius - ResizeRectangle;
                 child.SouthEast.Y = allocationChild.Height - socketRadius - ResizeRectangle;
@@ -995,6 +995,26 @@ namespace Gtk.NodeGraph
             public const string WidthProperty = "width";
 
             public const string HeightProperty = "height";
+
+            /// <summary>
+            /// Property storing the left padding value of this child.
+            /// </summary>
+            public const string PaddingLeftProperty = "padding-left";
+
+            /// <summary>
+            /// Property storing the right padding value of this child.
+            /// </summary>
+            public const string PaddingRightProperty = "padding-right";
+
+            /// <summary>
+            /// Property storing the top padding value of this child.
+            /// </summary>
+            public const string PaddingTopProperty = "padding-top";
+
+            /// <summary>
+            /// Property storing the bottom padding value of this child.
+            /// </summary>
+            public const string PaddingBottomProperty = "padding-bottom";
 
             public const uint ChildPropertyXId = 1;
             public const uint ChildPropertyYId = 2;
@@ -1092,6 +1112,62 @@ namespace Gtk.NodeGraph
                         node.Height = (uint) value;
 
                     Child.QueueAllocate();
+                }
+            }
+
+            [ChildProperty(PaddingBottomProperty)]
+            public short PaddingBottom
+            {
+                get
+                {
+                    return (Child is Node node) ? node.PaddingBottom : (short) 0;
+                }
+                set
+                {
+                    if (Child is Node node)
+                        node.PaddingBottom = value;
+                }
+            }
+
+            [ChildProperty(PaddingTopProperty)]
+            public short PaddingTop
+            {
+                get
+                {
+                    return (Child is Node node) ? node.PaddingTop : (short) 0;
+                }
+                set
+                {
+                    if (Child is Node node)
+                        node.PaddingTop = value;
+                }
+            }
+
+            [ChildProperty(PaddingLeftProperty)]
+            public short PaddingLeft
+            {
+                get
+                {
+                    return (Child is Node node) ? node.PaddingLeft : (short) 0;
+                }
+                set
+                {
+                    if (Child is Node node)
+                        node.PaddingLeft = value;
+                }
+            }
+
+            [ChildProperty(PaddingRightProperty)]
+            public short PaddingRight
+            {
+                get
+                {
+                    return (Child is Node node) ? node.PaddingRight : (short) 0;
+                }
+                set
+                {
+                    if (Child is Node node)
+                        node.PaddingRight = value;
                 }
             }
 
