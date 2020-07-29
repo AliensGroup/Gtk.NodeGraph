@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -111,8 +111,8 @@ namespace Gtk.NodeGraph
                     child.Rectangle.Width = Math.Max(0, w);
                     child.Rectangle.Height = Math.Max(0, h);
 
-                    child.Child.SetProperty(Node.WidthProperty, new Value(child.Rectangle.Width));
-                    child.Child.SetProperty(Node.HeightProperty, new Value(child.Rectangle.Height));
+                    child.Width = child.Rectangle.Width;
+                    child.Height = child.Rectangle.Height;
 
                     child.Child.QueueResize();
                     QueueDraw();
@@ -321,8 +321,8 @@ namespace Gtk.NodeGraph
             else if (y > yMax)
                 child.Rectangle.Y = yMax;
 
-            child.Child.SetProperty(Node.XProperty, new Value(child.Rectangle.X));
-            child.Child.SetProperty(Node.YProperty, new Value(child.Rectangle.Y));
+            child.X = child.Rectangle.X;
+            child.Y = child.Rectangle.Y;
 
             if (child.Child.Visible)
                 child.Child.QueueResize();
@@ -594,7 +594,13 @@ namespace Gtk.NodeGraph
             while (reader.Name == "object")
             {
                 if (reader.GetAttribute("class") != nameof(Node))
+                {
+                    XElement p = XNode.ReadFrom(reader) as XElement;
+                    Builder b = new Builder();
+                    b.AddFromString("<interface>" + p.ToString() + "</interface>");
+                    Node n = new Node(b.GetObject("0").Handle);
                     continue;
+                }
 
                 Node node = new Node();
 
@@ -644,8 +650,8 @@ namespace Gtk.NodeGraph
 
             reader.ReadEndElement();
 
-            foreach ((string handler, Node current, Node other) in connections.Select(t => (t.Item1, nodes[t.Item2], nodes[t.Item3])))
-                ConnectionMapper(current, handler, other);
+            // foreach ((string handler, Node current, Node other) in connections.Select(t => (t.Item1, nodes[t.Item2], nodes[t.Item3])))
+            //     ConnectionMapper(current, handler, other);
         }
 
         #endregion
