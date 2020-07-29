@@ -136,6 +136,31 @@ namespace Gtk.NodeGraph
         /// </summary>
         public const string LabelProperty = "label";
 
+        /// <summary>
+        /// Property storing the left padding value of this node.
+        /// </summary>
+        public const string PaddingLeftProperty = "padding-left";
+
+        /// <summary>
+        /// Property storing the right padding value of this node.
+        /// </summary>
+        public const string PaddingRightProperty = "padding-right";
+
+        /// <summary>
+        /// Property storing the top padding value of this node.
+        /// </summary>
+        public const string PaddingTopProperty = "padding-top";
+
+        /// <summary>
+        /// Property storing the bottom padding value of this node.
+        /// </summary>
+        public const string PaddingBottomProperty = "padding-bottom";
+
+        /// <summary>
+        /// Property storing the socket radius value of this node.
+        /// </summary>
+        public const string SocketRadiusProperty = "socket-radius";
+
         #endregion
 
         #region Constants
@@ -188,6 +213,7 @@ namespace Gtk.NodeGraph
         /// <value>
         /// The radius of any socket in this node.
         /// </value>
+        [Property(SocketRadiusProperty, "socket radius", "the radius of each socket on this node")]
         public double SocketRadius
         {
             get => _socketRadius;
@@ -243,6 +269,90 @@ namespace Gtk.NodeGraph
             .Where(c => c.Socket?.IO == NodeSocketIO.Source)
             .Select(c => c.Socket)
             .ToList();
+
+        /// <summary>
+        /// Gets or sets the padding of this <see cref="Node"/>.
+        /// </summary>
+        public Border NodePadding
+        {
+            get => _padding;
+            set
+            {
+                if (_padding.Equals(value))
+                    return;
+
+                _padding = value;
+                QueueAllocate();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the left padding of the node.
+        /// </summary>
+        [Property(PaddingLeftProperty, "left padding", "the left padding of the node")]
+        public short PaddingLeft
+        {
+            get => _padding.Left;
+            set
+            {
+                if (_padding.Left == value)
+                    return;
+
+                _padding.Left = value;
+                QueueResize();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the right padding of the node.
+        /// </summary>
+        [Property(PaddingRightProperty, "right padding", "the right padding of the node")]
+        public short PaddingRight
+        {
+            get => _padding.Right;
+            set
+            {
+                if (_padding.Right == value)
+                    return;
+
+                _padding.Right = value;
+                QueueResize();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the top padding of the node.
+        /// </summary>
+        [Property(PaddingTopProperty, "top padding", "the top padding of the node")]
+        public short PaddingTop
+        {
+            get => _padding.Top;
+            set
+            {
+                if (_padding.Top == value)
+                    return;
+
+                _padding.Top = value;
+                QueueResize();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the bottom padding of the node.
+        /// </summary>
+        [Property(PaddingBottomProperty, "bottom padding", "the bottom padding of the node")]
+        public short PaddingBottom
+        {
+            get => _padding.Bottom;
+            set
+            {
+                if (_padding.Bottom == value)
+                    return;
+
+                _padding.Bottom = value;
+                QueueResize();
+            }
+        }
 
         /// <summary>
         /// Gets or sets the node label.

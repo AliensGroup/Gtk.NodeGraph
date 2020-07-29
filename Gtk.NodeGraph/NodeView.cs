@@ -501,6 +501,11 @@ namespace Gtk.NodeGraph
                 xmlWriter.WriteAttributeString("id", node.Id.ToString());
 
                 WritePropertyElement(Node.LabelProperty, node.Label);
+                WritePropertyElement(Node.PaddingBottomProperty, node.PaddingBottom.ToString());
+                WritePropertyElement(Node.PaddingLeftProperty, node.PaddingLeft.ToString());
+                WritePropertyElement(Node.PaddingRightProperty, node.PaddingRight.ToString());
+                WritePropertyElement(Node.PaddingTopProperty, node.PaddingTop.ToString());
+                WritePropertyElement(Node.SocketRadiusProperty, node.SocketRadius.ToString());
                 WritePropertyElement(Node.XProperty, node.X.ToString());
                 WritePropertyElement(Node.YProperty, node.Y.ToString());
                 WritePropertyElement(Node.WidthProperty, node.Width.ToString());
@@ -618,6 +623,11 @@ namespace Gtk.NodeGraph
                         Node.WidthProperty => uint.Parse(p.Value),
                         Node.HeightProperty => uint.Parse(p.Value),
                         Node.IdProperty => uint.Parse(p.Value),
+                        Node.PaddingBottomProperty => short.Parse(p.Value),
+                        Node.PaddingLeftProperty => short.Parse(p.Value),
+                        Node.PaddingRightProperty => short.Parse(p.Value),
+                        Node.PaddingTopProperty => short.Parse(p.Value),
+                        Node.SocketRadiusProperty => double.Parse(p.Value),
                         _ => string.Empty
                     };
 
