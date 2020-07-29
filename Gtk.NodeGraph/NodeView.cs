@@ -1,4 +1,4 @@
-﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -881,15 +881,12 @@ namespace Gtk.NodeGraph
 
                 child.Child.GetPreferredSize(out Requisition requisition, out _);
 
-                child.Rectangle.X = (int) child.Child.GetProperty(Node.XProperty).Val;
-                child.Rectangle.Y = (int) child.Child.GetProperty(Node.YProperty).Val;
-
                 Rectangle allocationChild = new Rectangle
                 (
-                    child.Rectangle.X,
-                    child.Rectangle.Y,
-                    Math.Max(requisition.Width, child.Rectangle.Width),
-                    Math.Max(requisition.Height, child.Rectangle.Height)
+                    child.X,
+                    child.Y,
+                    Math.Max(requisition.Width, child.Width),
+                    Math.Max(requisition.Height, child.Height)
                 );
 
                 child.Child.SizeAllocate(allocationChild);
