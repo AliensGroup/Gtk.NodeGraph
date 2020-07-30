@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -30,6 +30,7 @@ using System.IO;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using System.Reflection;
 
 namespace Gtk.NodeGraph
 {
@@ -46,6 +47,8 @@ namespace Gtk.NodeGraph
         #endregion
 
         #region Fields
+
+        private static Dictionary<Type, string> _registeredNodeTypes = new Dictionary<Type, string>();
 
         private readonly List<NodeViewChild> _children = new List<NodeViewChild>();
         private readonly List<NodeViewConnection> _connections = new List<NodeViewConnection>();
@@ -67,6 +70,14 @@ namespace Gtk.NodeGraph
         #region Constructors
 
         /// <summary>
+        /// Static initializer.
+        /// </summary>
+        static NodeView()
+        {
+            RegisterNodeType<Node>("GtkNodesNode");
+        }
+
+        /// <summary>
         /// Creates a new <see cref="NodeView"/>.
         /// </summary>
         public NodeView()
@@ -83,6 +94,33 @@ namespace Gtk.NodeGraph
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Registers a <see cref="Node"/> subclass for saving/loading.
+        /// </summary>
+        /// <param name="nickname">The nickname of the node subclass in saved files.</param>
+        /// <typeparam name="T">The node subclass type.</typeparam>
+        public static void RegisterNodeType<T>(string nickname)
+            where T : Node
+        {
+            RegisterNodeType(typeof(T), nickname);
+        }
+
+        /// <summary>
+        /// Registers a <see cref="Node"/> subclass for saving/loading.
+        /// </summary>
+        /// <param name="type">The node subclass type.</param>
+        /// <param name="nickname">The nickname of the node subclass in saved files.</param>
+        public static void RegisterNodeType(Type type, string nickname)
+        {
+            if (_registeredNodeTypes.ContainsKey(type))
+                return;
+
+            if (type != typeof(Node) && !type.IsSubclassOf(typeof(Node)))
+                throw new InvalidOperationException("The given type is not a child of the Node class");
+
+            _registeredNodeTypes[type] = nickname;
+        }
 
         private void ChildMotionNotifyEventHandler(object sender, MotionNotifyEventArgs args)
         {
@@ -496,8 +534,12 @@ namespace Gtk.NodeGraph
                 if (!(child.Child is Node node))
                     continue;
 
+                Type nodeType = child.Child.GetType();
+                if (!_registeredNodeTypes.TryGetValue(nodeType, out string nodeNickname))
+                    throw new InvalidOperationException($"The node type {nodeType.Name} is not registered in this node view.");
+
                 xmlWriter.WriteStartElement("object");
-                xmlWriter.WriteAttributeString("class", nameof(Node));
+                xmlWriter.WriteAttributeString("class", nodeNickname);
                 xmlWriter.WriteAttributeString("id", node.Id.ToString());
 
                 WritePropertyElement(Node.LabelProperty, node.Label);
@@ -598,16 +640,19 @@ namespace Gtk.NodeGraph
 
             while (reader.Name == "object")
             {
-                if (reader.GetAttribute("class") != nameof(Node))
-                {
-                    XElement p = XNode.ReadFrom(reader) as XElement;
-                    Builder b = new Builder();
-                    b.AddFromString("<interface>" + p.ToString() + "</interface>");
-                    Node n = new Node(b.GetObject("0").Handle);
-                    continue;
-                }
+                string className = reader.GetAttribute("class");
 
-                Node node = new Node();
+                if (!_registeredNodeTypes.ContainsValue(className))
+                    throw new InvalidOperationException($"Unable to load the file. Found an unregistered node type: {className}");
+
+                Type classType = _registeredNodeTypes.First(t => t.Value == className).Key;
+                if (!(Activator.CreateInstance(classType) is Node node))
+                    throw new InvalidOperationException($"The registered node type {className} is not a subtype of the Node class.");
+
+                MemberInfo[] members = classType
+                    .GetMembers(BindingFlags.GetField | BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                    .Where(m => m.GetCustomAttributes<Builder.ObjectAttribute>().Any())
+                    .ToArray();
 
                 reader.ReadStartElement("object");
 
@@ -615,23 +660,64 @@ namespace Gtk.NodeGraph
                 {
                     XElement p = XNode.ReadFrom(reader) as XElement;
                     string propertyName = p.FirstAttribute.Value;
-                    object v = propertyName switch
+                    switch (propertyName)
                     {
-                        Node.LabelProperty => p.Value,
-                        Node.XProperty => uint.Parse(p.Value),
-                        Node.YProperty => uint.Parse(p.Value),
-                        Node.WidthProperty => uint.Parse(p.Value),
-                        Node.HeightProperty => uint.Parse(p.Value),
-                        Node.IdProperty => uint.Parse(p.Value),
-                        Node.PaddingBottomProperty => short.Parse(p.Value),
-                        Node.PaddingLeftProperty => short.Parse(p.Value),
-                        Node.PaddingRightProperty => short.Parse(p.Value),
-                        Node.PaddingTopProperty => short.Parse(p.Value),
-                        Node.SocketRadiusProperty => double.Parse(p.Value),
-                        _ => string.Empty
-                    };
-
-                    node.SetProperty(propertyName, new Value(v));
+                        case Node.LabelProperty:
+                        {
+                            node.Label = p.Value;
+                            break;
+                        }
+                        case Node.XProperty:
+                        {
+                            node.X = int.Parse(p.Value);
+                            break;
+                        }
+                        case Node.YProperty:
+                        {
+                            node.Y = int.Parse(p.Value);
+                            break;
+                        }
+                        case Node.WidthProperty:
+                        {
+                            node.Width = uint.Parse(p.Value);
+                            break;
+                        }
+                        case Node.HeightProperty:
+                        {
+                            node.Height = uint.Parse(p.Value);
+                            break;
+                        }
+                        case Node.IdProperty:
+                        {
+                            node.Id = uint.Parse(p.Value);
+                            break;
+                        }
+                        case Node.PaddingBottomProperty:
+                        {
+                            node.PaddingBottom = short.Parse(p.Value);
+                            break;
+                        }
+                        case Node.PaddingLeftProperty:
+                        {
+                            node.PaddingLeft = short.Parse(p.Value);
+                            break;
+                        }
+                        case Node.PaddingRightProperty:
+                        {
+                            node.PaddingRight = short.Parse(p.Value);
+                            break;
+                        }
+                        case Node.PaddingTopProperty:
+                        {
+                            node.PaddingTop = short.Parse(p.Value);
+                            break;
+                        }
+                        case Node.SocketRadiusProperty:
+                        {
+                            node.SocketRadius = double.Parse(p.Value);
+                            break;
+                        }
+                    }
                 }
 
                 while (reader.Name == "signal")
@@ -646,10 +732,33 @@ namespace Gtk.NodeGraph
                 while (reader.Name == "child")
                 {
                     XElement c = XNode.ReadFrom(reader) as XElement;
+                    string innerDOM = c.Elements().Aggregate(string.Empty, (s, e) => s + e.ToString());
                     Builder b = new Builder();
-                    b.AddFromString("<interface>" + c.FirstNode.ToString() + "</interface>");
+                    b.AddFromString("<interface>" + innerDOM + "</interface>");
 
-                    // TODO: Proper way to rebuild node children
+                    foreach (MemberInfo member in members)
+                    {
+                        GLib.Object o = b.GetObject(member.Name);
+                        if (o == null)
+                            continue;
+
+                        switch (member.MemberType)
+                        {
+                            case MemberTypes.Property:
+                            {
+                                PropertyInfo property = (PropertyInfo) member;
+                                property.SetValue(node, Activator.CreateInstance(property.PropertyType, o));
+                                break;
+                            }
+                            case MemberTypes.Field:
+                            {
+                                FieldInfo field = (FieldInfo) member;
+                                ConstructorInfo constructor = field.FieldType.GetConstructor(new Type[] { typeof(IntPtr) });
+                                field.SetValue(node, constructor.Invoke(new object[] { o.Handle }));
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 reader.ReadEndElement();
@@ -660,8 +769,8 @@ namespace Gtk.NodeGraph
 
             reader.ReadEndElement();
 
-            // foreach ((string handler, Node current, Node other) in connections.Select(t => (t.Item1, nodes[t.Item2], nodes[t.Item3])))
-            //     ConnectionMapper(current, handler, other);
+            foreach ((string handler, Node current, Node other) in connections.Select(t => (t.Item1, nodes[t.Item2], nodes[t.Item3])))
+                ConnectionMapper(current, handler, other);
         }
 
         #endregion
