@@ -904,6 +904,9 @@ namespace Gtk.NodeGraph
             return null;
         }
 
+        protected internal virtual void OnInitChildren()
+        { }
+
         protected virtual void OnNodeSocketBeginDragged(int x, int y)
         {
             NodeSocketDragBeginEvent?.Invoke(this, new NodeSocketDragEventArgs(x, y));

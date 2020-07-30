@@ -1,4 +1,4 @@
-﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -670,6 +670,21 @@ namespace Gtk.NodeGraph
 
         protected override void OnAdded(Widget widget)
         {
+            // The things we do for glade...
+            // XXX @na2axl: Glade support ?
+            if (widget is Node node)
+            {
+                node.NodeSocketDragBeginEvent += NodeDragBeginEventHandler;
+                node.NodeSocketDragEndEvent += NodeDragEndEventHandler;
+                node.NodeSocketConnectEvent += NodeSocketConnectEventHandler;
+                node.NodeSocketDisconnectEvent += NodeSocketDisconnectEventHandler;
+                node.NodeSocketDestroyedEvent += NodeSocketDestroyedEventHandler;
+
+                node.Id = _nodeId++;
+
+                node.OnInitChildren();
+            }
+
             NodeViewChild child = new NodeViewChild(this, widget)
             {
                 Rectangle = new Rectangle(100, 100, 100, 100),
@@ -682,19 +697,6 @@ namespace Gtk.NodeGraph
             widget.ButtonReleaseEvent += ChildButtonReleaseEvent;
             widget.MotionNotifyEvent += ChildMotionNotifyEventHandler;
             widget.LeaveNotifyEvent += ChildPointerCrossingEventHandler;
-
-            // The things we do for glade...
-            // XXX @na2axl: Glade support ?
-            if (widget is Node node)
-            {
-                node.NodeSocketDragBeginEvent += NodeDragBeginEventHandler;
-                node.NodeSocketDragEndEvent += NodeDragEndEventHandler;
-                node.NodeSocketConnectEvent += NodeSocketConnectEventHandler;
-                node.NodeSocketDisconnectEvent += NodeSocketDisconnectEventHandler;
-                node.NodeSocketDestroyedEvent += NodeSocketDestroyedEventHandler;
-
-                node.Id = _nodeId++;
-            }
 
             _children.Add(child);
 
