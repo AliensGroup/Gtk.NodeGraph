@@ -625,7 +625,7 @@ namespace Gtk.NodeGraph
             Parent.QueueDraw();
         }
 
-        private NodeSocket ItemAddReal(Widget child, NodeSocketIO io)
+        private NodeSocket ItemAddReal(Widget child, NodeSocketIO io, uint key = 0)
         {
             if (child.Parent != null)
                 return null;
@@ -681,6 +681,7 @@ namespace Gtk.NodeGraph
             childInfo.Socket.Id = _socketId++;
 
             childInfo.Socket.IO = io;
+            childInfo.Socket.Key = key;
 
             childInfo.Socket.Radius = _socketRadius;
 
@@ -997,10 +998,14 @@ namespace Gtk.NodeGraph
         /// </summary>
         /// <param name="widget">The item widget to add.</param>
         /// <param name="mode">The mode of the generated socket for this item.</param>
+        /// <param name="key">
+        /// The key of the generated socket for this item.
+        /// Defaults to 0, means the generated socket is compatible with any other socket.
+        /// </param>
         /// <returns>
         /// The generated socket widget for the added item.
         /// </returns>
-        public NodeSocket ItemAdd(Widget widget, NodeSocketIO mode)
+        public NodeSocket ItemAdd(Widget widget, NodeSocketIO mode, uint key = 0)
         {
             return ItemAddReal(widget, mode);
         }
