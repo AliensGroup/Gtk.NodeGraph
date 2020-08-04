@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
+﻿// Copyright (C) 2019 Armin Luntzer (armin.luntzer@univie.ac.at)
 //               Department of Astrophysics, University of Vienna
 //
 // C# port by Axel Nana <axel.nana@aliens-group.com>
@@ -49,9 +49,9 @@ namespace Gtk.NodeGraph
     /// </summary>
     public class SocketDataEventArgs : EventArgs
     {
-        public byte[] Data { get; }
+        public object Data { get; }
 
-        internal SocketDataEventArgs(byte[] data)
+        internal SocketDataEventArgs(object data)
         {
             Data = data;
         }
@@ -535,12 +535,12 @@ namespace Gtk.NodeGraph
             SocketConnectEvent?.Invoke(this, new SocketEventArgs(source));
         }
 
-        protected virtual void OnSocketDataIncoming(byte[] payload)
+        protected virtual void OnSocketDataIncoming(object payload)
         {
             SocketDataIncomingEvent?.Invoke(this, new SocketDataEventArgs(payload));
         }
 
-        protected virtual void OnSocketDataOutgoing(byte[] payload)
+        protected virtual void OnSocketDataOutgoing(object payload)
         {
             SocketDataOutgoingEvent?.Invoke(this, new SocketDataEventArgs(payload));
         }
@@ -737,11 +737,11 @@ namespace Gtk.NodeGraph
         /// Emits a signal on the <see cref="NodeSocket"/> in incoming
         /// or outgoing direction.
         /// </summary>
-        /// <param name="payload">The data buffer to write.</param>
+        /// <param name="payload">The data object to write.</param>
         /// <returns>
         /// <c>true</c> on success, <c>false</c> if <see cref="NodeSocketIO.Disable"/> is configured.
         /// </returns>
-        public bool Write(byte[] payload)
+        public bool Write(object payload)
         {
             if (_io == NodeSocketIO.Disable)
                 return false;
