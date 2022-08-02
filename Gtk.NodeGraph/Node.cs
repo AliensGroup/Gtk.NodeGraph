@@ -1007,7 +1007,7 @@ namespace Gtk.NodeGraph
         /// </returns>
         public NodeSocket ItemAdd(Widget widget, NodeSocketIO mode, uint key = 0)
         {
-            return ItemAddReal(widget, mode);
+            return ItemAddReal(widget, mode, key);
         }
 
         #endregion
